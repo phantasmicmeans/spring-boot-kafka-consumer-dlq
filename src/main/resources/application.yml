@@ -1,0 +1,18 @@
+spring:
+  profiles:
+    active: functional
+  kafka:
+    bootstrap-servers: localhost:9092 # producer
+
+#  active profile list
+# 1. original - CustomMessageListener - [spring-kafka]
+# 2. legacy - CustomMessageLegacyListener - [spring-cloud-stream-binder-kafka]
+# 3. functional CustomMessageFunctionalListener - [spring-cloud-stream-binder-kafka-stream]
+# 4. functional-retryable - CustomMessageRetryableFunctionalListener - [spring-cloud-stream-binder-kafka-stream]
+
+
+#  select listener to media.kafka.consumer below
+# 1. CustomMessageListener (spring-kafka, dlq, retry O)
+# 2. CustomMessageLegacyListener (spring-cloud-stream-kafka-binder, dlq)
+# 3. CustomMessageFunctionalListener (spring-cloud-stream-kafka-streams-binder, dlq (only deserialization err))
+# 4. CustomMessageRetryableFunctionalListener (spring-cloud-stream-kafka-streams-binder, dlq (only deserialization err), retry O)
