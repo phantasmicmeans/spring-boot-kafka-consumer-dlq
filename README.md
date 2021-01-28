@@ -14,10 +14,10 @@ CustomMessageRetryableFunctionalListener | spring-cloud-stream-kafka-streams-bin
 &nbsp;
 
 ## Run 
-1. Select active profile
+1. Select an active profile
    - consume-topic: `custom-message-topic` 
    - dead-letter-topic: `custom-message-dlq`
-2. Run application
+2. Run the application
 3. Trigger message
 ```
 GET http://localhost:8080/produce 
