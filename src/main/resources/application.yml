@@ -5,10 +5,10 @@ spring:
     bootstrap-servers: localhost:9092 # producer
 
 #  active profile list
-# 1. original - CustomMessageListener - [spring-kafka]
-# 2. legacy - CustomMessageLegacyListener - [spring-cloud-stream-binder-kafka]
-# 3. functional CustomMessageFunctionalListener - [spring-cloud-stream-binder-kafka-stream]
-# 4. functional-retryable - CustomMessageRetryableFunctionalListener - [spring-cloud-stream-binder-kafka-stream]
+# 1. original - [CustomMessageListener] - [spring-kafka]
+# 2. legacy - [CustomMessageLegacyListener] - [spring-cloud-stream-binder-kafka]
+# 3. functional - [CustomMessageFunctionalListener] - [spring-cloud-stream-binder-kafka-stream]
+# 4. functional-retryable - [CustomMessageRetryableFunctionalListener] - [spring-cloud-stream-binder-kafka-stream]
 
 
 #  select listener to media.kafka.consumer below
