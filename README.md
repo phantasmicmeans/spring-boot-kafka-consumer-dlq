@@ -58,9 +58,9 @@ spring:
 
 ## Note
 
-**설정**
+Do not confuse `spring-cloud-stream-kafka-binder` with `spring-cloud-stream-kafka-streams-binder`. 
 
-`spring-cloud-stream-kafka-binder`와 `spring-cloud-stream-kafka-streams-binder`는 설정 차이가 있으므로 주의
+**difference**
 
 spring-cloud-stream-kafka-binder | spring-cloud-stream-kafka-streams-binder
 ---------------|------------
@@ -69,6 +69,10 @@ spring.cloud.stream.kafka.binder.~ <br> spring.cloud.stream.kafka.binding.`<inpu
 
 **~FunctionalListener DLQ**
 
-- ContentHistoryFunctionalListener / CustomHistoryRetryableFunctionalListener는 `spring-cloud-stream-kafka-streams-binder`의 functional 스타일로 코딩되어 있는데, consume 로직 내에서 에러 발생시(e.g. RuntimeException) stream thread가 죽음 -> dlq 전송 X 
-- spring.cloud.stream.kafka.streams.binding.<input>.consumer.deserializationExceptionHandler: sendToDlq 옵션으로 consumer가 데이터 역직렬화시(pojo로 받을 때) 에러는 dlq로 전송   
+`ContentHistoryFunctionalListener`, `CustomHistoryRetryableFunctionalListener` are consist of functional style of `spring-cloud-stream-kafka-streams-binder`.
+When an error occurs (e.g. RuntimeException) within the consume logic, stream thread dies and is subsequently shut down.
+
+It only sends DLQ for deserialization error by the setting below, so it needs to be handled separately within consume logic.
+
+- `spring.cloud.stream.kafka.streams.binding.<input>.consumer.deserializationExceptionHandler: sendToDlq`
 
