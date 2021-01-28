@@ -14,19 +14,23 @@ CustomMessageRetryableFunctionalListener | spring-cloud-stream-kafka-streams-bin
 &nbsp;
 
 ## Run 
-1. **select active profile**
-  - consume-topic: `custom-message-topic` 
-  - dead-letter-topic: `custom-message-dlq`
-2. run application
-3. trigger message
+1. Select active profile
+   - consume-topic: `custom-message-topic` 
+   - dead-letter-topic: `custom-message-dlq`
+2. Run application
+3. Trigger message
 ```
 GET http://localhost:8080/produce 
 ```
-4. monitor `custom-message-dlq` topic 
+4. Monitor `custom-message-dlq` topic 
 
 ```
  bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic custom-message-dlq
 ```
+
+&nbsp;
+
+## Settings 
 
 **application.yml**
 ```yml
@@ -52,7 +56,7 @@ spring:
 
 &nbsp;
 
-## Warning
+## Note
 
 **설정**
 
