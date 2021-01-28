@@ -1,0 +1,39 @@
+# spring-cloud-stream-binder-kafka-streams
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: spring-boot-kafka-dlq-sample
+  cloud:
+    stream:
+      bindings:
+        process-in-0:
+          destination: custom-message-topic
+          useNativeDecoding: true
+      kafka:
+        streams:
+          binder:
+            configuration:
+              default.key.serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+              default.value.serde: org.springframework.kafka.support.serializer.JsonSerde
+            brokers: localhost:9092
+            # deserializationExceptionHandler: sendToDlq  # deserialization exception message will send to dlq (all topic)
+            # logAndContinue, logAndFail, sendToDlq
+
+          # custom dlq for process-in-0
+          # 따로 아래처럼 정의하지 않는다면, error.<input-topic-name>.<application-id> 형태의 dlq로 발행
+
+          bindings:
+            process-in-0:
+              consumer: # each consumer
+                deserializationExceptionHandler: sendToDlq
+                dlqName: custom-message-dlq
+                keySerde: org.apache.kafka.common.serialization.Serdes$StringSerde
+                valueSerde: com.boot.kafa.consumer.dlq.model.CustomMessageSerde
+                autoCommitOnError: true
+                autoCommitOffset: true
+
+          # DLQ per input consumer binding example
+          #bindings.process-in-1.consumer.deserializationExceptionHandler: sendToDlq
+          #bindings.process-in-1.consumer.dlqName: english-counts-dlq
