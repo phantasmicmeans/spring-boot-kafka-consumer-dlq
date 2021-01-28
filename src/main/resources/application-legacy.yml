@@ -1,0 +1,41 @@
+# spring-cloud-stream-binder-kafka
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: spring-boot-kafka-dlq-sample
+  cloud:
+    stream:
+      bindings:
+        input:
+          group: kafka-streams-dlq-sample # must have group name
+          destination: custom-message-topic
+          useNativeDecoding: true
+      kafka:
+        binder:
+          configuration:
+            default.key.serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+            default.value.serde: org.springframework.kafka.support.serializer.JsonSerde
+          brokers: localhost:9092
+
+          # custom dlq for process-in-0
+          # 따로 아래처럼 정의하지 않는다면, error.<input-topic-name>.<application-id> 형태의 dlq로 발행
+
+        bindings:
+          input:
+            consumer: # consumer 별 처리
+                # When set to true, it enables DLQ behavior for the consumer. By default, messages that result in errors are forwarded to a topic named error.<destination>.<group>.
+                # messages sent to the DLQ topic are enhanced with the following headers: x-original-topic, x-exception-message, and x-exception-stacktrace as byte[].
+                # By default, a failed record is sent to the same partition number in the DLQ topic as the original record.
+              enableDlq: true
+              dlqName: custom-message-dlq
+              keySerde: org.apache.kafka.common.serialization.Serdes$StringSerde
+              valueSerde: com.boot.kafa.consumer.dlq.model.CustomMessageSerde
+              autoCommitOnError: true
+              autoCommitOffset: true
+
+          # DLQ per input consumer binding example
+          #bindings.process-in-1.consumer.deserializationExceptionHandler: sendToDlq
+          #bindings.process-in-1.consumer.dlqName: english-counts-dlq
+
