@@ -1,8 +1,9 @@
 spring:
   profiles:
-    active: functional
+    active: original
   kafka:
-    bootstrap-servers: localhost:9092 # producer
+    # producer address
+    bootstrap-servers: localhost:9092
 
 #  active profile list
 # 1. original - [CustomMessageListener] - [spring-kafka]
@@ -16,3 +17,25 @@ spring:
 # 2. CustomMessageLegacyListener (spring-cloud-stream-kafka-binder, dlq)
 # 3. CustomMessageFunctionalListener (spring-cloud-stream-kafka-streams-binder, dlq (only deserialization err))
 # 4. CustomMessageRetryableFunctionalListener (spring-cloud-stream-kafka-streams-binder, dlq (only deserialization err), retry O)
+
+dynamic-kafka:
+  enable: false
+  default:
+    classPath: com.boot.kafa.consumer.dlq.CustomMessageListener
+    methodName: listen
+  retry:
+    history-5m-retry: # topic-name
+      id: history-5m-retry
+      containerFactory: retry5mKafkaListenerContainerFactory
+      groupId: history-5m-retry-group
+      classPath: com.boot.kafa.consumer.dlq.CustomMessageListener
+      methodName: listener5m
+    history-10m-retry: # topic-name
+      id: history-10m-retry
+      containerFactory: retry10mKafkaListenerContainerFactory
+      groupId: history-10m-retry-group
+    history-20-retry: # topic-name
+      id: history-20m-retry
+      containerFactory: retry20mKafkaListenerContainerFactory
+      groupId: history-20m-retry-group
+  dlq: history-deadletter-topic
