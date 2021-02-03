@@ -1,4 +1,4 @@
-# Spring Boot, Kafka-Dlq-Template
+# Spring Boot, Kafka-Retry-Dlq-Template
 
 &nbsp;
 
@@ -13,6 +13,43 @@ CustomMessageRetryableFunctionalListener | spring-cloud-stream-kafka-streams-bin
 
 &nbsp;
 
+## Automatically Registered Consumer
+
+If you want to run retry-consumers that will automaically registered, change `dynamic.kafka.enable` value to true.
+
+---
+**NOTE**
+
+- only support `spring.profiles.active: original`
+- only support when `CustomMessageListener` bean is registered
+- only support for `spring-kafka`
+
+---
+
+
+```yml
+dynamic-kafka:
+  enable: false
+  default:
+    classPath: com.boot.kafa.consumer.dlq.CustomMessageListener
+    methodName: listen
+  retry:
+    history-5m-retry: # topic-name
+      id: history-5m-retry
+      containerFactory: retry5mKafkaListenerContainerFactory
+      groupId: history-5m-retry-group
+      classPath: com.boot.kafa.consumer.dlq.CustomMessageListener
+      methodName: listener5m
+    history-10m-retry: # topic-name
+      id: history-10m-retry
+      containerFactory: retry10mKafkaListenerContainerFactory
+      groupId: history-10m-retry-group
+    history-20-retry: # topic-name
+      id: history-20m-retry
+      containerFactory: retry20mKafkaListenerContainerFactory
+      groupId: history-20m-retry-group
+  dlq: history-deadletter-topic 
+```
 ## Run 
 1. Select an active profile
    - consume-topic: `custom-message-topic` 
