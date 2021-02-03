@@ -4,31 +4,24 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.support.serializer.JsonSerializer;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.backoff.FixedBackOff;
 
 import com.boot.kafa.consumer.dlq.model.CustomMessage;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -38,24 +31,15 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 @Profile(value = "original")
 public class CustomMessageListener {
 
 	@Value(value = "${spring.kafka.bootstrap-servers}")
 	private String bootstrapAddress;
 
-	public ProducerFactory<String, Object> dlqProducerFactory() {
-		Map<String, Object> configProps = new HashMap<>();
-		configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
-		configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-		configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		return new DefaultKafkaProducerFactory<>(configProps);
-	}
-
-	@Bean
-	public KafkaTemplate<String, Object> kafkaTemplate() {
-		return new KafkaTemplate<>(dlqProducerFactory());
-	}
+	@Value(value = "${dynamic-kafka.dlq}")
+	private String dlqTopic;
 
 	public Map<String, Object> jsonDeserializeConsumerConfigs(String groupId) {
 		Map<String, Object> props = new HashMap<>();
@@ -68,16 +52,43 @@ public class CustomMessageListener {
 
 	@Bean
 	public ConcurrentKafkaListenerContainerFactory<String, CustomMessage> customMessageKafkaListenerContainerFactory(
-			KafkaOperations<String, Object> operations,
-			@Qualifier("process-in-0-RetryTemplate") RetryTemplate retryTemplate) {
+			KafkaOperations<String, Object> operations) {
 		ConcurrentKafkaListenerContainerFactory<String, CustomMessage> factory = new ConcurrentKafkaListenerContainerFactory<>();
 		factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(jsonDeserializeConsumerConfigs("custom-message-processor"),
 				new StringDeserializer(),
 				new JsonDeserializer<>(CustomMessage.class)
 		));
 
-		factory.setRetryTemplate(retryTemplate);
-		// dlq
+		factory.setErrorHandler(new SeekToCurrentErrorHandler(
+				new DeadLetterPublishingRecoverer(operations, (cr, e) -> new TopicPartition("history-5m-retry", cr.partition())),
+				new FixedBackOff(1000L, 1)));
+		return factory;
+	}
+
+	@Bean
+	public ConcurrentKafkaListenerContainerFactory<String, CustomMessage> retry5mKafkaListenerContainerFactory(
+			KafkaOperations<String, Object> operations) {
+		ConcurrentKafkaListenerContainerFactory<String, CustomMessage> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(jsonDeserializeConsumerConfigs(""),
+				new StringDeserializer(),
+				new JsonDeserializer<>(CustomMessage.class)
+		));
+
+		factory.setErrorHandler(new SeekToCurrentErrorHandler(
+				new DeadLetterPublishingRecoverer(operations, (cr, e) -> new TopicPartition("history-10m-retry", cr.partition())),
+				new FixedBackOff(1000L, 1)));
+		return factory;
+	}
+
+	@Bean
+	public ConcurrentKafkaListenerContainerFactory<String, CustomMessage> retry10mKafkaListenerContainerFactory(
+			KafkaOperations<String, Object> operations) {
+		ConcurrentKafkaListenerContainerFactory<String, CustomMessage> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(jsonDeserializeConsumerConfigs(""),
+				new StringDeserializer(),
+				new JsonDeserializer<>(CustomMessage.class)
+		));
+
 		factory.setErrorHandler(new SeekToCurrentErrorHandler(
 				new DeadLetterPublishingRecoverer(operations, (cr, e) -> new TopicPartition("custom-message-dlq", cr.partition())),
 				new FixedBackOff(1000L, 1)));
@@ -85,12 +96,17 @@ public class CustomMessageListener {
 	}
 
 	@Bean
-	public ConcurrentKafkaListenerContainerFactory<String, CustomMessage> dltContainerFactory(KafkaTemplate<String, Object> template) {
+	public ConcurrentKafkaListenerContainerFactory<String, CustomMessage> retry20mKafkaListenerContainerFactory(
+			KafkaOperations<String, Object> operations) {
 		ConcurrentKafkaListenerContainerFactory<String, CustomMessage> factory = new ConcurrentKafkaListenerContainerFactory<>();
-		factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(jsonDeserializeConsumerConfigs("content-message-processor-dlt"),
+		factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(jsonDeserializeConsumerConfigs(""),
 				new StringDeserializer(),
 				new JsonDeserializer<>(CustomMessage.class)
 		));
+
+		factory.setErrorHandler(new SeekToCurrentErrorHandler(
+				new DeadLetterPublishingRecoverer(operations, (cr, e) -> new TopicPartition(dlqTopic, cr.partition())),
+				new FixedBackOff(1000L, 1)));
 		return factory;
 	}
 
@@ -100,7 +116,7 @@ public class CustomMessageListener {
 			containerFactory = "customMessageKafkaListenerContainerFactory"
 	)
 	public void listen(CustomMessage value) {
-		log.info("listen() " + value.getData());
+		log.info("\nlisten() " + value.getData() + "\n");
 
 		/**
 		 * do something
@@ -109,12 +125,8 @@ public class CustomMessageListener {
 		throw new RuntimeException();  // exception -> to dead-letter-topic
 	}
 
-	@KafkaListener(
-			id = "custom-message-processor-dlt",
-			topics = "custom-message-dlq",
-			containerFactory = "dltContainerFactory"
-	)
-	public void dltListen(CustomMessage message) {
-		log.info("dltListen() " + message.getData());
+	@KafkaListener
+	public void listener5m(CustomMessage message) {
+		log.info("\nlistener5m() " + message.getData() + "\n");
 	}
 }
